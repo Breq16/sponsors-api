@@ -1,7 +1,7 @@
 import { Octokit } from 'octokit'
 
 const github = new Octokit({
-  auth: GITHUB_TOKEN,
+  auth: GITHUB_API_TOKEN,
 })
 
 addEventListener('fetch', event => {
@@ -12,6 +12,12 @@ addEventListener('fetch', event => {
  * @param {Request} request
  */
 async function handleRequest(request) {
+  const incomingOrigin = request.headers.get('Origin')
+
+  if (incomingOrigin && !/(breq\.dev|localhost)/.test(incomingOrigin)) {
+    return new Response('Origin Not Allowed', { status: 403 })
+  }
+
   const data = await github.graphql(`
     query {
       user(login: "breq16") {
@@ -32,7 +38,11 @@ async function handleRequest(request) {
       sponsors: data.user.sponsors.edges.map(({ node }) => node.login),
     }),
     {
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'access-control-allow-origin': incomingOrigin,
+        vary: 'Origin',
+      },
     },
   )
 }
